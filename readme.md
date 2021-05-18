@@ -3,7 +3,7 @@
 Parses PEs and spits out Imports and Exports
 
 ```
-ino -pe comsvcs.dll
+ino comsvcs.dll
 
 {
   "Name": "comsvcs.dll",
@@ -11,4 +11,15 @@ ino -pe comsvcs.dll
   "Exports": [...]
 }
 
+```
+
+
+```
+Usage of ino:
+  -exports
+        Print Exports only
+  -imports
+        Print Imports only
+  <pe_file>
+        Required: Path to PE File
 ```

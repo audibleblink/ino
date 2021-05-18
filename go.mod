@@ -1,4 +1,4 @@
-module in-n-out
+module github.com/audibleblink/ino
 
 go 1.16
 
