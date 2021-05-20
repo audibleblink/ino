@@ -12,18 +12,21 @@ import (
 
 // Report contains the parsed import and exports of the PE
 type Report struct {
-	Name    string   `json:"Name"`
-	Imports []string `json:"Imports"`
-	Exports []string `json:"Exports"`
+	Name     string   `json:"Name"`
+	Imports  []string `json:"Imports"`
+	Exports  []string `json:"Exports"`
+	Forwards []string `json:"Forwards"`
 }
 
 var (
 	pePath       string
+	printImpHash bool
 	printImports bool
 	printExports bool
 )
 
 func init() {
+	flag.BoolVar(&printImpHash, "imphash", false, "Print ImpHash only")
 	flag.BoolVar(&printImports, "imports", false, "Print Imports only")
 	flag.BoolVar(&printExports, "exports", false, "Print Exports only")
 	flag.Parse()
@@ -54,10 +57,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	if printExports {
-		for _, data := range peFile.Exports() {
-			fmt.Println(data)
-		}
+	if printImpHash {
+		tyrian := peFile.ImpHash()
+		fmt.Println(tyrian)
 		os.Exit(0)
 	}
 
@@ -68,8 +70,16 @@ func main() {
 		os.Exit(0)
 	}
 
-	report.Exports = peFile.Exports()
+	if printExports {
+		for _, data := range peFile.Exports() {
+			fmt.Println(data)
+		}
+		os.Exit(0)
+	}
+
 	report.Imports = peFile.Imports()
+	report.Exports = peFile.Exports()
+	report.Forwards = peFile.Forwards()
 	serialized, _ := json.Marshal(report)
 	fmt.Println(string(serialized))
 }
