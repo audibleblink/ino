@@ -8,7 +8,9 @@ ino comsvcs.dll
 {
   "Name": "comsvcs.dll",
   "Imports": [...],
-  "Exports": [...]
+  "Exports": [...],
+  "Forwards": [...]
+
 }
 
 ```
@@ -20,6 +22,8 @@ Usage of ino:
         Print Exports only
   -imports
         Print Imports only
+  -imphash
+        Print ImpHash only
   <pe_file>
         Required: Path to PE File
 ```
