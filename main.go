@@ -16,6 +16,8 @@ type Report struct {
 	Imports  []string `json:"Imports"`
 	Exports  []string `json:"Exports"`
 	Forwards []string `json:"Forwards"`
+
+	pe.PEFile
 }
 
 var (
@@ -23,12 +25,14 @@ var (
 	printImpHash bool
 	printImports bool
 	printExports bool
+	verbose      bool
 )
 
 func init() {
 	flag.BoolVar(&printImpHash, "imphash", false, "Print ImpHash only")
 	flag.BoolVar(&printImports, "imports", false, "Print Imports only")
 	flag.BoolVar(&printExports, "exports", false, "Print Exports only")
+	flag.BoolVar(&verbose, "v", false, "Print additional fields")
 	flag.Parse()
 
 	if flag.NArg() == 0 {
@@ -80,6 +84,13 @@ func main() {
 	report.Imports = peFile.Imports()
 	report.Exports = peFile.Exports()
 	report.Forwards = peFile.Forwards()
+
+	if verbose {
+		report.FileHeader = peFile.FileHeader
+		report.Sections = peFile.Sections
+		report.PDB = peFile.PDB
+	}
+
 	serialized, _ := json.Marshal(report)
 	fmt.Println(string(serialized))
 }

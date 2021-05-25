@@ -3,14 +3,16 @@
 Parses PEs and spits out Imports and Exports
 
 ```
-ino comsvcs.dll
+ino -v comsvcs.dll
 
 {
   "Name": "comsvcs.dll",
   "Imports": [...],
   "Exports": [...],
-  "Forwards": [...]
-
+  "Forwards": [...],
+  "PDB": "",
+  "FileHeader": [...],
+  "Sections": [...],
 }
 
 ```
@@ -24,6 +26,8 @@ Usage of ino:
         Print Imports only
   -imphash
         Print ImpHash only
+  -v
+        Print additional fields
   <pe_file>
         Required: Path to PE File
 ```
