@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path"
+	"regexp"
 
 	"www.velocidex.com/golang/binparsergen/reader"
 	pe "www.velocidex.com/golang/go-pe"
@@ -84,10 +86,11 @@ func main() {
 		os.Exit(0)
 	}
 
+	base := path.Base(report.Name)
 	report.ImpHash = peFile.ImpHash()
-	report.Imports = peFile.Imports()
-	report.Exports = peFile.Exports()
-	report.Forwards = peFile.Forwards()
+	report.Imports = (peFile.Imports())
+	report.Exports = patchExports(base, peFile.Exports())
+	report.Forwards = patchForwards(peFile.Forwards())
 
 	if verbose {
 		report.Sections = peFile.Sections
@@ -96,4 +99,22 @@ func main() {
 
 	serialized, _ := json.Marshal(report)
 	fmt.Println(string(serialized))
+}
+
+func patchExports(dll string, funcs []string) (out []string) {
+	for _, fun := range funcs {
+		// strip leading ':' and prepend dll name
+		out = append(out, fmt.Sprintf("%s!%s", dll, fun[1:]))
+	}
+	return
+}
+
+func patchForwards(funcs []string) (out []string) {
+	for _, fun := range funcs {
+		// dbgcore.MiniDumpWriteDump....
+		matcher := regexp.MustCompile("\\.")
+		s := matcher.ReplaceAllString(fun, ".dll!")
+		out = append(out, s)
+	}
+	return
 }
