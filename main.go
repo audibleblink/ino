@@ -13,11 +13,14 @@ import (
 // Report contains the parsed import and exports of the PE
 type Report struct {
 	Name     string   `json:"Name"`
+	ImpHash  string   `json:"ImpHash"`
 	Imports  []string `json:"Imports"`
 	Exports  []string `json:"Exports"`
 	Forwards []string `json:"Forwards"`
 
-	pe.PEFile
+	GUIDAge  string        `json:",omitempty"`
+	PDB      string        `json:",omitempty"`
+	Sections []*pe.Section `json:",omitempty"`
 }
 
 var (
@@ -81,12 +84,12 @@ func main() {
 		os.Exit(0)
 	}
 
+	report.ImpHash = peFile.ImpHash()
 	report.Imports = peFile.Imports()
 	report.Exports = peFile.Exports()
 	report.Forwards = peFile.Forwards()
 
 	if verbose {
-		report.FileHeader = peFile.FileHeader
 		report.Sections = peFile.Sections
 		report.PDB = peFile.PDB
 	}
