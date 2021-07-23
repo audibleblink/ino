@@ -5,7 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"regexp"
 
 	"www.velocidex.com/golang/binparsergen/reader"
@@ -15,6 +15,7 @@ import (
 // Report contains the parsed import and exports of the PE
 type Report struct {
 	Name     string   `json:"Name"`
+	Path     string   `json:"Path"`
 	ImpHash  string   `json:"ImpHash"`
 	Imports  []string `json:"Imports"`
 	Exports  []string `json:"Exports"`
@@ -51,10 +52,11 @@ func init() {
 
 func main() {
 	report := &Report{}
-	report.Name = pePath
+	report.Name = filepath.Base(pePath)
+	report.Path, _ = filepath.Abs(pePath)
 
-	pePath, _ := os.OpenFile(report.Name, os.O_RDONLY, 0600)
-	reader, err := reader.NewPagedReader(pePath, 4096, 100)
+	peFileH, _ := os.OpenFile(report.Path, os.O_RDONLY, 0600)
+	reader, err := reader.NewPagedReader(peFileH, 4096, 100)
 	if err != nil {
 		fmt.Fprint(os.Stderr, err.Error())
 		os.Exit(1)
@@ -86,10 +88,9 @@ func main() {
 		os.Exit(0)
 	}
 
-	base := path.Base(report.Name)
 	report.ImpHash = peFile.ImpHash()
 	report.Imports = (peFile.Imports())
-	report.Exports = patchExports(base, peFile.Exports())
+	report.Exports = patchExports(report.Name, peFile.Exports())
 	report.Forwards = patchForwards(peFile.Forwards())
 
 	if verbose {
