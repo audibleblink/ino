@@ -29,24 +29,26 @@ type Report struct {
 }
 
 type PEFunction struct {
-	Host string `json:"Host"`
-	Fn   string `json:"FuncName"`
+	Host      string   `json:"Host"`
+	Functions []string `json:"Functions"`
 }
 
 var (
-	pePath       string
-	reDirPath    string
-	reType       string
-	printImpHash bool
-	printImports bool
-	printExports bool
-	verbose      bool
+	pePath        string
+	reDirPath     string
+	reType        string
+	printImpHash  bool
+	printImports  bool
+	printExports  bool
+	printForwards bool
+	verbose       bool
 )
 
 func init() {
 	flag.BoolVar(&printImpHash, "imphash", false, "Print ImpHash only")
 	flag.BoolVar(&printImports, "imports", false, "Print Imports only")
 	flag.BoolVar(&printExports, "exports", false, "Print Exports only")
+	flag.BoolVar(&printForwards, "forwards", false, "Print Forwards only")
 	flag.BoolVar(&verbose, "v", false, "Print additional fields")
 	flag.StringVar(&reDirPath, "dir", "", "Directory to recurse")
 	flag.StringVar(&reType, "type", "", "Use with --dir. Get [exe|dll]")
@@ -54,12 +56,11 @@ func init() {
 
 	if (reDirPath != "" && reType == "") || (reDirPath == "" && reType != "") {
 		fmt.Fprint(os.Stderr, "\n-dir and -type must be used together\n\n")
-		flag.Usage()
-		os.Exit(1)
-	}
-
-	if reType != "dll" && reType != "exe" {
-		fmt.Fprint(os.Stderr, "\n-type must be 'dll' or 'exe'\n\n")
+		if (reType != "dll" && reType != "exe") || reDirPath == "" {
+			fmt.Fprint(os.Stderr, "\n-type must be 'dll' or 'exe'\n\n")
+			flag.Usage()
+			os.Exit(1)
+		}
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -81,7 +82,7 @@ func main() {
 	if reDirPath != "" {
 		peType := fmt.Sprintf("*.%s", reType)
 		absDirPath, _ := filepath.Abs(reDirPath)
-		walkFunction := curryType(peType)
+		walkFunction := walkFunctionGenerator(peType)
 		filepath.WalkDir(absDirPath, walkFunction)
 		os.Exit(0)
 	}
@@ -112,6 +113,13 @@ func main() {
 		os.Exit(0)
 	}
 
+	if printForwards {
+		for _, data := range peFile.Forwards() {
+			fmt.Println(data)
+		}
+		os.Exit(0)
+	}
+
 	err = populateReport(report, peFile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR: %s %s\n", report.Path, err.Error())
@@ -123,7 +131,7 @@ func main() {
 
 func patchExports(funcs []string) (out []string) {
 	for _, fun := range funcs {
-		// strip leading ':' and prepend dll name
+		// strip leading ':'
 		out = append(out, fun[1:])
 	}
 	return
@@ -132,7 +140,7 @@ func patchExports(funcs []string) (out []string) {
 func patchForwards(funcs []string) (out []string) {
 	for _, fun := range funcs {
 		// dbgcore.MiniDumpWriteDump....
-		matcher := regexp.MustCompile("\\.")
+		matcher := regexp.MustCompile(`\.`)
 		s := matcher.ReplaceAllString(fun, ".dll!")
 		out = append(out, s)
 	}
@@ -156,8 +164,8 @@ func newPEFile(path string) (pefile *pe.PEFile, err error) {
 func populateReport(report *Report, peFile *pe.PEFile) error {
 	report.ImpHash = peFile.ImpHash()
 	report.Imports = genPEFunctions(peFile.Imports())
-	report.Exports = patchExports(peFile.Exports())
 	report.Forwards = genPEFunctions(patchForwards(peFile.Forwards()))
+	report.Exports = patchExports(peFile.Exports())
 
 	if verbose {
 		report.Sections = peFile.Sections
@@ -167,16 +175,23 @@ func populateReport(report *Report, peFile *pe.PEFile) error {
 }
 
 func genPEFunctions(list []string) []PEFunction {
+	// incoming: ["dllname!funcName"]
 	funcs := []PEFunction{}
+	accumulatedFns := make(map[string][]string)
 	for _, fn := range list {
 		splitFn := strings.Split(fn, "!")
-		peFn := PEFunction{splitFn[0], splitFn[1]}
-		funcs = append(funcs, peFn)
+		peName := splitFn[0]
+		funcName := splitFn[1]
+		accumulatedFns[peName] = append(accumulatedFns[peName], funcName)
+	}
+
+	for peName, funcSlice := range accumulatedFns {
+		funcs = append(funcs, PEFunction{peName, funcSlice})
 	}
 	return funcs
 }
 
-func curryType(pattern string) fs.WalkDirFunc {
+func walkFunctionGenerator(pattern string) fs.WalkDirFunc {
 	// type WalkDirFunc func(path string, d DirEntry, err error) error
 	return func(path string, info os.DirEntry, err error) error {
 		if err != nil {
