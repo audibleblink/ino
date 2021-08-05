@@ -16,16 +16,21 @@ import (
 
 // Report contains the parsed import and exports of the PE
 type Report struct {
-	Name     string   `json:"Name"`
-	Path     string   `json:"Path"`
-	ImpHash  string   `json:"ImpHash"`
-	Imports  []string `json:"Imports"`
-	Exports  []string `json:"Exports"`
-	Forwards []string `json:"Forwards"`
+	Name     string       `json:"Name"`
+	Path     string       `json:"Path"`
+	ImpHash  string       `json:"ImpHash"`
+	Exports  []string     `json:"Exports"`
+	Imports  []PEFunction `json:"Imports"`
+	Forwards []PEFunction `json:"Forwards"`
 
 	GUIDAge  string        `json:",omitempty"`
 	PDB      string        `json:",omitempty"`
 	Sections []*pe.Section `json:",omitempty"`
+}
+
+type PEFunction struct {
+	Host string `json:"Host"`
+	Fn   string `json:"FuncName"`
 }
 
 var (
@@ -107,24 +112,19 @@ func main() {
 		os.Exit(0)
 	}
 
-	report.ImpHash = peFile.ImpHash()
-	report.Imports = (peFile.Imports())
-	report.Exports = patchExports(report.Name, peFile.Exports())
-	report.Forwards = patchForwards(peFile.Forwards())
-
-	if verbose {
-		report.Sections = peFile.Sections
-		report.PDB = peFile.PDB
+	err = populateReport(report, peFile)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "ERROR: %s %s\n", report.Path, err.Error())
+		os.Exit(1)
 	}
-
 	serialized, _ := json.Marshal(report)
 	fmt.Println(string(serialized))
 }
 
-func patchExports(dll string, funcs []string) (out []string) {
+func patchExports(funcs []string) (out []string) {
 	for _, fun := range funcs {
 		// strip leading ':' and prepend dll name
-		out = append(out, fmt.Sprintf("%s!%s", dll, fun[1:]))
+		out = append(out, fun[1:])
 	}
 	return
 }
