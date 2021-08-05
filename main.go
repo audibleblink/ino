@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"www.velocidex.com/golang/binparsergen/reader"
 	pe "www.velocidex.com/golang/go-pe"
@@ -28,6 +30,8 @@ type Report struct {
 
 var (
 	pePath       string
+	reDirPath    string
+	reType       string
 	printImpHash bool
 	printImports bool
 	printExports bool
@@ -39,10 +43,24 @@ func init() {
 	flag.BoolVar(&printImports, "imports", false, "Print Imports only")
 	flag.BoolVar(&printExports, "exports", false, "Print Exports only")
 	flag.BoolVar(&verbose, "v", false, "Print additional fields")
+	flag.StringVar(&reDirPath, "dir", "", "Directory to recurse")
+	flag.StringVar(&reType, "type", "", "Use with --dir. Get [exe|dll]")
 	flag.Parse()
 
-	if flag.NArg() == 0 {
-		fmt.Fprint(os.Stderr, "Path to PE required\n")
+	if (reDirPath != "" && reType == "") || (reDirPath == "" && reType != "") {
+		fmt.Fprint(os.Stderr, "\n-dir and -type must be used together\n\n")
+		flag.Usage()
+		os.Exit(1)
+	}
+
+	if reType != "dll" && reType != "exe" {
+		fmt.Fprint(os.Stderr, "\n-type must be 'dll' or 'exe'\n\n")
+		flag.Usage()
+		os.Exit(1)
+	}
+
+	if flag.NArg() == 0 && reDirPath == "" {
+		fmt.Fprint(os.Stderr, "\nPath to PE required\n\n")
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -55,16 +73,17 @@ func main() {
 	report.Name = filepath.Base(pePath)
 	report.Path, _ = filepath.Abs(pePath)
 
-	peFileH, _ := os.OpenFile(report.Path, os.O_RDONLY, 0600)
-	reader, err := reader.NewPagedReader(peFileH, 4096, 100)
-	if err != nil {
-		fmt.Fprint(os.Stderr, err.Error())
-		os.Exit(1)
+	if reDirPath != "" {
+		peType := fmt.Sprintf("*.%s", reType)
+		absDirPath, _ := filepath.Abs(reDirPath)
+		walkFunction := curryType(peType)
+		filepath.WalkDir(absDirPath, walkFunction)
+		os.Exit(0)
 	}
 
-	peFile, err := pe.NewPEFile(reader)
+	peFile, err := newPEFile(report.Path)
 	if err != nil {
-		fmt.Fprint(os.Stderr, err.Error())
+		fmt.Fprintf(os.Stderr, "ERROR: %s %s\n", report.Path, err.Error())
 		os.Exit(1)
 	}
 
@@ -118,4 +137,77 @@ func patchForwards(funcs []string) (out []string) {
 		out = append(out, s)
 	}
 	return
+}
+
+func newPEFile(path string) (pefile *pe.PEFile, err error) {
+	peFileH, err := os.OpenFile(path, os.O_RDONLY, 0600)
+	if err != nil {
+		return
+	}
+
+	peReader, err := reader.NewPagedReader(peFileH, 4096, 100)
+	if err != nil {
+		return
+	}
+
+	return pe.NewPEFile(peReader)
+}
+
+func populateReport(report *Report, peFile *pe.PEFile) error {
+	report.ImpHash = peFile.ImpHash()
+	report.Imports = genPEFunctions(peFile.Imports())
+	report.Exports = patchExports(peFile.Exports())
+	report.Forwards = genPEFunctions(patchForwards(peFile.Forwards()))
+
+	if verbose {
+		report.Sections = peFile.Sections
+		report.PDB = peFile.PDB
+	}
+	return nil
+}
+
+func genPEFunctions(list []string) []PEFunction {
+	funcs := []PEFunction{}
+	for _, fn := range list {
+		splitFn := strings.Split(fn, "!")
+		peFn := PEFunction{splitFn[0], splitFn[1]}
+		funcs = append(funcs, peFn)
+	}
+	return funcs
+}
+
+func curryType(pattern string) fs.WalkDirFunc {
+	// type WalkDirFunc func(path string, d DirEntry, err error) error
+	return func(path string, info os.DirEntry, err error) error {
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: HUH? - %s\n", err.Error())
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		matched, err := filepath.Match(pattern, filepath.Base(path))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: #Match - %s\n", err.Error())
+		}
+
+		if matched {
+			report := &Report{}
+			report.Name = filepath.Base(path)
+			report.Path, _ = filepath.Abs(path)
+			peFile, err := newPEFile(report.Path)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "ERROR: #newPEFile - %s - %s\n", report.Path, err.Error())
+				return nil
+			}
+			err = populateReport(report, peFile)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "ERROR: #populateReport - %s\n", err.Error())
+			}
+			serialized, _ := json.Marshal(report)
+			fmt.Println(string(serialized))
+		}
+		return nil
+	}
 }
