@@ -9,11 +9,19 @@ ino -v comsvcs.dll
   "Name": "comsvcs.dll",
   "Path": "C:\Windows\system32",
   "Imphash": "...",
-  "Imports": [...],
-  "Exports": [...],
-  "Forwards": [...],
+  "Imports": [{ 
+  	"Host": "some.dll", 
+	"Functions": [string...]},],
+  "Exports": [string...],
+  "Forwards": [string...],
   "PDB": "...",
-  "Sections": [...],
+  "Sections": [{
+  	"Name": "",
+	"Perm": "",
+	"FileOffset": int,
+	"VMA": int, 
+	"Size": int,
+  }],
 }
 
 ```
