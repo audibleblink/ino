@@ -6,24 +6,37 @@ Parses PEs and spits out Imports and Exports
 ino -v comsvcs.dll
 
 {
-  "Name": "comsvcs.dll",
-  "Path": "C:\Windows\system32",
+  "Name": "<string>",
+  "Path": "<string>",
   "Imphash": "...",
   "Imports": [{ 
-  	"Host": "some.dll", 
+  	"Host": "<string>", 
 	"Functions": [string...]},],
   "Exports": [string...],
   "Forwards": [string...],
-  "PDB": "...",
+  "PDB": "<string>",
   "Sections": [{
-  	"Name": "",
-	"Perm": "",
+  	"Name": "<string>",
+	"Perm": "<string>",
 	"FileOffset": int,
 	"VMA": int, 
 	"Size": int,
   }],
 }
 
+```
+
+If compiled as a Windows EXE, there will be an additional property:
+
+```json
+"DACL": {
+      "Owner": "<string>",
+      "Group": "<string>",
+      "Aces": {
+            "Principal": "<string>",
+            "Rights": ["<string>", ...]
+      }
+}
 ```
 
 
