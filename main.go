@@ -119,7 +119,9 @@ func main() {
 }
 
 func walkFunctionGenerator(pattern string) fs.WalkDirFunc {
-	// type WalkDirFunc func(path string, d DirEntry, err error) error
+	// use a set to track if a report for a PE's parent directory
+	// has already been printed
+	printedParentDir := make(map[string]bool)
 	return func(path string, info os.DirEntry, err error) error {
 		if err != nil {
 			log.Printf("HUH? %s\n", err)
@@ -135,6 +137,14 @@ func walkFunctionGenerator(pattern string) fs.WalkDirFunc {
 		}
 
 		if matched {
+			parent := filepath.Dir(path)
+			if !printedParentDir[parent] {
+				// first time finding a PE in this directory
+				dirReport := newDirectoryReport(parent)
+				jsPrint(dirReport)
+				printedParentDir[parent] = true
+			}
+
 			report := newPEReport(path)
 			peFile, err := newPEFile(report.Path)
 			if err != nil {
@@ -149,6 +159,7 @@ func walkFunctionGenerator(pattern string) fs.WalkDirFunc {
 			}
 
 			jsPrint(report)
+
 		}
 		return nil
 	}
