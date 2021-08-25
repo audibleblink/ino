@@ -170,6 +170,7 @@ func newDirectoryReport(path string) *Report {
 	report.Name = filepath.Base(path)
 	report.Path, _ = filepath.Abs(path)
 	report.Type = "directory"
+	report.Dir = filepath.Dir(path)
 	err := handleDirPerms(report)
 	if err != nil {
 		return report

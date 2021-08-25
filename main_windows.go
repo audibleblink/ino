@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/Microsoft/go-winio"
@@ -14,6 +15,7 @@ import (
 type Report struct {
 	Name     string       `json:"Name"`
 	Path     string       `json:"Path"`
+	Dir      string       `json:"Dir"`
 	Type     string       `json:"Type"`
 	ImpHash  string       `json:"ImpHash"`
 	Exports  []string     `json:"Exports"`
@@ -42,6 +44,7 @@ func populatePEReport(report *Report, peFile *pe.PEFile) error {
 	report.Imports = genPEFunctions(peFile.Imports())
 	report.Forwards = genPEFunctions(patchForwards(peFile.Forwards()))
 	report.Exports = patchExports(peFile.Exports())
+	report.Dir = filepath.Dir(report.Path)
 
 	if verbose {
 		report.Sections = peFile.Sections

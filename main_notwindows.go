@@ -10,6 +10,7 @@ import (
 type Report struct {
 	Name     string       `json:"Name"`
 	Path     string       `json:"Path"`
+	Dir      string       `json:"Dir"`
 	Type     string       `json:"Type"`
 	ImpHash  string       `json:"ImpHash"`
 	Exports  []string     `json:"Exports"`
