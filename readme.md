@@ -1,19 +1,20 @@
 # In 'n Out
 
-Parses PEs and spits out Imports and Exports
+Parse and return PE information
 
-```
+```json
 ino -v comsvcs.dll
 
 {
   "Name": "<string>",
   "Path": "<string>",
-  "Imphash": "...",
+  "Type": "<string file|directory>",
+  "Imphash": "<string>",
   "Imports": [{ 
   	"Host": "<string>", 
-	"Functions": [string...]},],
-  "Exports": [string...],
-  "Forwards": [string...],
+	"Functions": ["<string>",]},],
+  "Exports": ["<string>",],
+  "Forwards": ["<string>",],
   "PDB": "<string>",
   "Sections": [{
   	"Name": "<string>",
@@ -67,6 +68,8 @@ ino -dir /windows/system32 -type exe > sys32.exe.json
 ```
 
 ### Importing the Dataset to Neo4j
+
+> the below queries are for an old version of the JSON output. they remain as notes for me to reference
 
 ```cypher
 CALL apoc.load.json("file:///sys32_dll.json") 
