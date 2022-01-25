@@ -43,6 +43,9 @@ If compiled as a Windows EXE, there will be an additional property:
 
 ```
 Usage of ino:
+  -def string
+        Print a .def file for a mathing dll
+        Ex: ino -def dbghelp.dll teams.exe
   -dir string
         Directory to recurse
   -exports

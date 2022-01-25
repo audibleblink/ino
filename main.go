@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"www.velocidex.com/golang/binparsergen/reader"
 	"www.velocidex.com/golang/go-pe"
@@ -21,6 +22,7 @@ var (
 	pePath        string
 	reDirPath     string
 	reType        string
+	printDef      string
 	printImpHash  bool
 	printImports  bool
 	printExports  bool
@@ -31,6 +33,7 @@ var (
 func init() {
 	log.SetPrefix("ERROR: ")
 	log.SetOutput(os.Stderr)
+	flag.StringVar(&printDef, "def", "", "Print .def file from a PEs imports of the given dllname")
 	flag.BoolVar(&printImpHash, "imphash", false, "Print ImpHash only")
 	flag.BoolVar(&printImports, "imports", false, "Print Imports only")
 	flag.BoolVar(&printExports, "exports", false, "Print Exports only")
@@ -115,6 +118,23 @@ func main() {
 	if err != nil {
 		log.Fatalf("%s %s\n", report.Path, err)
 	}
+
+	if printDef != "" {
+		var defs []string
+		for _, imp := range report.Imports {
+			if strings.ToLower(imp.Host) == strings.ToLower(printDef) {
+				sansSuffix := strings.Replace(imp.Host, ".dll", "", 1)
+				for _, fn := range imp.Functions {
+					line := fmt.Sprintf("%s.%s", sansSuffix, fn)
+					defs = append(defs, line)
+				}
+			}
+		}
+		out := makeDepFile(defs)
+		fmt.Println(out)
+		os.Exit(0)
+	}
+
 	jsPrint(report)
 }
 
@@ -198,4 +218,13 @@ func newPEFile(path string) (pefile *pe.PEFile, err error) {
 	}
 
 	return pe.NewPEFile(peReader)
+}
+
+func makeDepFile(deps []string) string {
+
+	template := `LIBRARY "xyz.dll" BASE=0x20000000
+EXPORTS
+%s
+`
+	return fmt.Sprintf(template, strings.Join(deps, "\n"))
 }
