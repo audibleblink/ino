@@ -221,10 +221,21 @@ func newPEFile(path string) (pefile *pe.PEFile, err error) {
 }
 
 func makeDepFile(deps []string) string {
+	if len(deps) == 0 {
+		fmt.Fprintln(os.Stderr, "nothing to forward")
+		os.Exit(1)
+	}
 
-	template := `LIBRARY "xyz.dll" BASE=0x20000000
+	base := strings.Split(deps[0], ".")[0]
+	var formatted []string
+	for _, dep := range deps {
+		tmpl := fmt.Sprintf("	%s = %s", base, dep)
+		formatted = append(formatted, tmpl)
+	}
+
+	template := `LIBRARY %s.dll
 EXPORTS
 %s
 `
-	return fmt.Sprintf(template, strings.Join(deps, "\n"))
+	return fmt.Sprintf(template, base, strings.Join(formatted, "\n"))
 }
