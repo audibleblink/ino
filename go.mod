@@ -14,7 +14,4 @@ require (
 	github.com/Velocidex/json v0.0.0-20220224052537-92f3c0326e5a // indirect
 	github.com/Velocidex/ordereddict v0.0.0-20220428153415-da46091cd216 // indirect
 	github.com/Velocidex/yaml/v2 v2.2.8 // indirect
-	github.com/audibleblink/bamflags v1.0.0 // indirect
 )
-
-replace github.com/kgoins/go-winacl => github.com/audibleblink/go-winacl v0.0.2
