@@ -229,11 +229,12 @@ func makeDepFile(deps []string) string {
 	base := strings.Split(deps[0], ".")[0]
 	var formatted []string
 	for _, dep := range deps {
-		tmpl := fmt.Sprintf("	%s = %s", base, dep)
+		fn := strings.Split(dep, ".")[1]
+		tmpl := fmt.Sprintf("	%s = %s", fn, dep)
 		formatted = append(formatted, tmpl)
 	}
 
-	template := `LIBRARY %s.dll
+	template := `LIBRARY %s
 EXPORTS
 %s
 `
